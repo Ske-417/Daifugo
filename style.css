@@ -5,6 +5,8 @@
   --text:#fafafa;
   --red:#c62828;
   --black:#111;
+  --effect-bg: rgba(0,0,0,0.6);
+  --effect-color: #fff;
 }
 
 *{box-sizing:border-box}
@@ -20,22 +22,35 @@ body{
 }
 
 header{
-  padding:12px 20px;
+  padding:12px 12px;
   background: rgba(0,0,0,0.15);
   display:flex;
   align-items:center;
-  gap:20px;
+  gap:12px;
+  flex-wrap:wrap;
 }
 
 header h1{margin:0; font-size:20px}
 #config{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
 #config label{font-size:14px; color:#fff}
 
+#localRolesConfig{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-left:8px;
+}
+#localRolesList{ list-style:none; margin:4px 0 0 0; padding:0; width:100%; max-width:420px; color:#fff }
+#localRolesList li{ font-size:13px; margin:2px 0; display:flex; gap:8px; align-items:center}
+#localRolesList button{ padding:2px 6px; font-size:12px; }
+
+/* main layout */
 main{flex:1; padding:18px; display:flex; flex-direction:column; gap:16px}
 
 #status{display:flex; gap:20px; align-items:center}
 #turnInfo, #pileInfo{background:rgba(255,255,255,0.06); padding:8px 12px; border-radius:6px}
-#log{flex:1; background:rgba(0,0,0,0.15); padding:8px; border-radius:6px; max-height:120px; overflow:auto; font-size:13px}
+#log{flex:1; background:rgba(0,0,0,0.15); padding:8px; border-radius:6px; max-height:180px; overflow:auto; font-size:13px}
 
 #table{display:flex; gap:20px; align-items:flex-start}
 #playersArea{flex:1; display:flex; gap:8px; flex-direction:column}
@@ -49,6 +64,7 @@ main{flex:1; padding:18px; display:flex; flex-direction:column; gap:16px}
 #pile{min-height:140px; width:320px; background:rgba(255,255,255,0.03); border-radius:8px; padding:12px; display:flex; flex-wrap:wrap; gap:6px; justify-content:center}
 .card-row{display:flex; gap:8px; align-items:flex-end; padding:10px; flex-wrap:wrap}
 
+/* card */
 .card{
   width:64px; height:96px; border-radius:6px;
   background:var(--card-bg); color:var(--black); border:1px solid var(--card-border);
@@ -63,24 +79,48 @@ main{flex:1; padding:18px; display:flex; flex-direction:column; gap:16px}
 .card .rank{font-size:18px; line-height:1}
 .card .suit{font-size:14px; position:absolute; left:8px; top:6px}
 
-/* 赤スートのカードにクラスを付ける */
+/* 赤スート */
 .card.red .rank{ color: var(--red) }
-
-/* スートは CSS の ::before でシンボルを挿入 */
 .suit.club::before{ content: "♣"; color: var(--black) }
 .suit.spade::before{ content: "♠"; color: var(--black) }
 .suit.heart::before{ content: "♥"; color: var(--red) }
 .suit.diamond::before{ content: "♦"; color: var(--red) }
-
-/* ジョーカー用 */
-.card.joker{
-  background: linear-gradient(135deg, #f6f6f6, #e8e8e8);
-  color: var(--black);
-}
+.card.joker{ background: linear-gradient(135deg, #f6f6f6, #e8e8e8); color: var(--black) }
 .card.joker .suit::before{ content: "J"; color: var(--black) }
 
 #controls{display:flex; gap:8px}
 button{padding:8px 12px; border-radius:6px; border:none; cursor:pointer; background:#f0f0f0; color:#000}
 button:active{transform:translateY(1px)}
+button[disabled]{opacity:0.5; cursor:not-allowed}
 
-footer{padding:8px 12px; font-size:12px; color:#eee; text-align:center}
+/* effect overlay */
+.effect-overlay{
+  position:fixed;
+  left:0; right:0; top:0; bottom:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+  opacity:0;
+  transition: opacity 0.25s ease;
+}
+.effect-box{
+  background:var(--effect-bg);
+  color:var(--effect-color);
+  padding:18px 28px;
+  border-radius:12px;
+  text-align:center;
+  box-shadow:0 8px 30px rgba(0,0,0,0.5);
+  transform:scale(0.9);
+  transition: transform 0.25s ease;
+  font-size:22px;
+  font-weight:700;
+}
+.effect-overlay.show{ opacity:1; pointer-events:auto; }
+.effect-overlay.show .effect-box{ transform:scale(1); }
+
+/* small screens (not necessary but safe) */
+@media (max-width:900px){
+  #centerArea{ width:320px }
+  .card{ width:52px; height:78px }
+}
