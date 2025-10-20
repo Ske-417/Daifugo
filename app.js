@@ -166,8 +166,8 @@ function humanPlay(){
   pile.leader = currentPlayer;
   passCount = 0;
 
-  // 8切り判定（出したカードに8が含まれていれば流れる）
-  if(settings.allow8cut && playCards.some(c=>c.rank === '8')){
+  // 8切り判定（sequence の場合は 8切りにしない）
+  if(settings.allow8cut && combo.type !== 'sequence' && playCards.some(c=>c.rank === '8')){
     log(`${human.name} が 8 を含む手を出して場を流しました！`);
     showEffect('8切り！');
     clearPile(currentPlayer);
@@ -348,8 +348,8 @@ function nextTurnIfCPU(){
   passCount = 0;
   log(`${cpu.name} が ${play.combo.type} を出しました。`);
 
-  // 8切り判定: 出した手に8が含まれていれば流れる
-  if(settings.allow8cut && play.cards.some(c=>c.rank === '8')){
+  // 8切り判定: 出した手に8が含まれており、かつ sequence ではない場合に流れる
+  if(settings.allow8cut && play.combo.type !== 'sequence' && play.cards.some(c=>c.rank === '8')){
     log(`${cpu.name}が8を出して場を流しました！`);
     showEffect('8切り！');
     clearPile(currentPlayer);
