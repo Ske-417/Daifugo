@@ -3,6 +3,8 @@
   --card-bg:#fff;
   --card-border:#333;
   --text:#fafafa;
+  --red:#c62828;
+  --black:#111;
 }
 
 *{box-sizing:border-box}
@@ -49,15 +51,33 @@ main{flex:1; padding:18px; display:flex; flex-direction:column; gap:16px}
 
 .card{
   width:64px; height:96px; border-radius:6px;
-  background:var(--card-bg); color:#000; border:1px solid var(--card-border);
+  background:var(--card-bg); color:var(--black); border:1px solid var(--card-border);
   display:flex; align-items:center; justify-content:center; font-weight:600; cursor:pointer;
   user-select:none;
   box-shadow:0 2px 5px rgba(0,0,0,0.3);
   position:relative;
+  flex-direction:column;
+  padding:8px;
 }
 .card.selected{transform:translateY(-12px); box-shadow:0 6px 12px rgba(0,0,0,0.45)}
-.card .rank{font-size:16px}
-.card .suit{font-size:12px; position:absolute; left:6px; top:6px}
+.card .rank{font-size:18px; line-height:1}
+.card .suit{font-size:14px; position:absolute; left:8px; top:6px}
+
+/* 赤スートのカードにクラスを付ける */
+.card.red .rank{ color: var(--red) }
+
+/* スートは CSS の ::before でシンボルを挿入 */
+.suit.club::before{ content: "♣"; color: var(--black) }
+.suit.spade::before{ content: "♠"; color: var(--black) }
+.suit.heart::before{ content: "♥"; color: var(--red) }
+.suit.diamond::before{ content: "♦"; color: var(--red) }
+
+/* ジョーカー用 */
+.card.joker{
+  background: linear-gradient(135deg, #f6f6f6, #e8e8e8);
+  color: var(--black);
+}
+.card.joker .suit::before{ content: "J"; color: var(--black) }
 
 #controls{display:flex; gap:8px}
 button{padding:8px 12px; border-radius:6px; border:none; cursor:pointer; background:#f0f0f0; color:#000}
