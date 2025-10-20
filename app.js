@@ -1,4 +1,4 @@
-// 大富豪プロトタイプ（スートをCSSで表現、テキストベース）
+// 大富豪プロトタイプ（スートをCSSで表現、ジョーカーをワイルドに、CPUの場流し修正）
 // 使い方: index.htmlをブラウザで開いて設定をして「ゲーム開始」を押す
 
 // --- ユーティリティ / 定義 ---
@@ -26,13 +26,6 @@ function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.rand
 function rankValue(card){
   if(card.rank === JOKER) return 100;
   return RANKS.indexOf(card.rank);
-}
-
-// 比較（革命時フリップ）
-function compareRanks(a,b,revolution=false){
-  const av = rankValue(a), bv = rankValue(b);
-  if(revolution) return bv - av;
-  return av - bv;
 }
 
 // --- DOM ---
@@ -66,7 +59,7 @@ let settings = { useJoker:false, allow8cut:true, allowSequences:true, allowRevol
 startBtn.addEventListener('click', startGame);
 playBtn.addEventListener('click', humanPlay);
 passBtn.addEventListener('click', humanPass);
-clearBtn.addEventListener('click', clearPile);
+clearBtn.addEventListener('click', ()=> clearPile()); // 手動クリア（通常はleaderが次手）
 
 function log(s){
   const p = document.createElement('div'); p.textContent = s;
@@ -192,12 +185,12 @@ function humanPlay(){
   const playCards = selIdx.map(i => human.hand[i]);
   // 合法手かチェック
   const combo = detectCombo(playCards, settings.allowSequences);
-  if(!combo){ alert('その組み合わせは認識できません（単発/ペア/トリプル/4枚/階段(設定)）。'); return; }
+  if(!combo){ alert('その組み合わせは認識できません（単発/ペア/トリプル/4枚/階段(設定)、ジョーカー補完を含む）。'); return; }
   if(!isValidAgainstPile(combo)){
     alert('場に対して合法な出し方ではありません。');
     return;
   }
-  // 出す
+  // 出す（選んだカードを削除）
   for(const i of selIdx) human.hand.splice(i,1);
   pile.cards = playCards.slice();
   pile.combo = combo;
@@ -207,7 +200,7 @@ function humanPlay(){
   // 8切り判定（シンプル版：シングルで8を出したら場クリア）
   if(settings.allow8cut && combo.type === 'single' && playCards.length===1 && playCards[0].rank === '8'){
     log(`${human.name}が8を出して場を流しました！`);
-    clearPile();
+    clearPile(currentPlayer); // humanが次手のリーダー
   } else {
     log(`${human.name} が ${combo.type} を出しました。`);
     // 革命判定
@@ -232,32 +225,79 @@ function humanPass(){
   setTimeout(nextTurnIfCPU, 300);
 }
 
-function clearPile(){
+// clearPile: newLeader を指定すればそのプレイヤーが次の先手になる。
+// 省略時は場の leader を次先手とする（nullなら currentPlayer を維持）
+function clearPile(newLeader = null){
+  const oldLeader = pile.leader;
   pile = {combo:null, cards:[], leader:null};
   passCount = 0;
+  if(newLeader !== null){
+    currentPlayer = newLeader % players.length;
+  } else if(oldLeader !== null){
+    currentPlayer = oldLeader % players.length;
+  }
   renderAll();
   log('場を流しました。（リセット）');
+  updateTurnInfo();
+  // もし次手がCPUなら自動で続行
+  if(!players[currentPlayer].isHuman){
+    setTimeout(nextTurnIfCPU, 300);
+  }
 }
 
-// --- コンボ判定（簡易） ---
+// --- コンボ判定（ジョーカーをワイルドとして扱う簡易実装） ---
 function detectCombo(cards, allowSequences=false){
   if(cards.length === 0) return null;
-  const ranks = cards.map(c => c.rank);
-  const uniqueRanks = [...new Set(ranks)];
+  const jokers = cards.filter(c=>c.rank === JOKER);
+  const nonJ = cards.filter(c=>c.rank !== JOKER);
+  const nonRanks = nonJ.map(c => c.rank);
+  const uniqueNonRanks = [...new Set(nonRanks)];
+
+  // 単発
   if(cards.length === 1) return {type:'single', rankValue: rankValue(cards[0]), rankText:cards[0].rank, length:1};
-  if(uniqueRanks.length === 1){
+
+  // ペア/トリプル/フォー（ジョーカーで補完可能）
+  if(nonJ.length === 0){
+    // 全ジョーカー: その枚数に応じたセットとする（簡易）
     const type = cards.length === 2 ? 'pair' : (cards.length === 3 ? 'triple' : (cards.length === 4 ? 'four' : null));
-    if(type) return {type, rankValue: rankValue(cards[0]), rankText: cards[0].rank, length: cards.length};
+    if(type) return {type, rankValue: 100, rankText: 'JOKER', length: cards.length};
   }
+  if(uniqueNonRanks.length === 1){
+    const baseRank = uniqueNonRanks[0];
+    const totalCount = cards.length;
+    const type = totalCount === 2 ? 'pair' : (totalCount === 3 ? 'triple' : (totalCount === 4 ? 'four' : null));
+    if(type) return {type, rankValue: RANKS.indexOf(baseRank), rankText: baseRank, length: totalCount};
+    // それ以上は不明扱い
+  }
+
+  // 階段（ワイルドでギャップを埋める）: 非ジョーカーだけで重複なし
   if(allowSequences && cards.length >= 3){
-    if(cards.some(c=>c.rank===JOKER)) return null;
-    const vals = cards.map(c => rankValue(c)).sort((a,b)=>a-b);
-    let consecutive = true;
-    for(let i=1;i<vals.length;i++){
-      if(vals[i] !== vals[i-1] + 1) { consecutive = false; break; }
+    // 非ジョーカーに重複ランクがあればシーケンス不可
+    const valsNonJ = nonJ.map(c=>RANKS.indexOf(c.rank)).sort((a,b)=>a-b);
+    if(valsNonJ.length !== [...new Set(valsNonJ)].length) return null; // 同じランクが複数あると厳格に不可（簡易）
+    // 総長 = cards.length. 目標は、ある連続区間に対して欠けた個数が jokers.length 以下 で埋まるか
+    // 試行: 各 possible start value s で s .. s+len-1 がレンジになるかチェック
+    const len = cards.length;
+    for(let s=0;s+len-1 < RANKS.length; s++){
+      let needJ = 0;
+      let ok = true;
+      for(let r=s; r<=s+len-1; r++){
+        if(!valsNonJ.includes(r)){
+          needJ++;
+        }
+      }
+      // もし nonJ に含まれる値が範囲外なら invalid
+      for(const v of valsNonJ){
+        if(v < s || v > s+len-1) { ok=false; break; }
+      }
+      if(!ok) continue;
+      if(needJ <= jokers.length){
+        // 成立。rankValue はシーケンス最後のランク値（強さ判定用）
+        return {type:'sequence', length: len, rankValue: s+len-1, rankText:`${RANKS[s]}〜`, length: len};
+      }
     }
-    if(consecutive) return {type:'sequence', length:cards.length, rankValue: vals[vals.length-1], rankText: `${cards[0].rank}〜`};
   }
+
   return null;
 }
 
@@ -276,7 +316,7 @@ function isValidAgainstPile(combo){
   return false;
 }
 
-// --- CPU処理（簡易ヒューリスティック） ---
+// --- CPU処理（ジョーカー対応の簡易ヒューリスティック） ---
 function nextTurnIfCPU(){
   if(players[currentPlayer].isHuman) return;
   const cpu = players[currentPlayer];
@@ -284,9 +324,11 @@ function nextTurnIfCPU(){
   if(!play){
     log(`${cpu.name} はパスしました。`);
     passCount++;
+    // パスが全員（リーダー以外）なら場クリア
     if(pile.leader !== null && passCount >= players.length - 1){
       log('全員パスしたため場が流れます。');
-      clearPile();
+      // 次の先手は現在の場の leader
+      clearPile(/* newLeader omitted -> uses old leader */);
     } else {
       currentPlayer = (currentPlayer + 1) % players.length;
       renderAll();
@@ -295,6 +337,8 @@ function nextTurnIfCPU(){
     }
     return;
   }
+
+  // 出す
   for(const c of play.cards){
     const idx = cpu.hand.findIndex(h => h === c || (h.rank === c.rank && h.suit === c.suit && h.code === c.code));
     if(idx>=0) cpu.hand.splice(idx,1);
@@ -304,14 +348,26 @@ function nextTurnIfCPU(){
   pile.leader = currentPlayer;
   passCount = 0;
   log(`${cpu.name} が ${play.combo.type} を出しました。`);
+
+  // 8切り判定（CPUも適用）
+  if(settings.allow8cut && play.combo.type === 'single' && play.cards.length === 1 && play.cards[0].rank === '8'){
+    log(`${cpu.name}が8を出して場を流しました！`);
+    // clearPile で次の先手をこのCPUにする
+    clearPile(currentPlayer);
+    return; // ここで戻して currentPlayer を変更済みにする
+  }
+
+  // 革命判定
   if(settings.allowRevolution && play.combo.type === 'four'){
     revolution = !revolution;
     log(`革命が起きました（${revolution ? '革命中' : '通常'}）`);
   }
 
+  // 上がりチェック
   if(cpu.hand.length === 0){
     cpu.finishedRank = true;
     log(`${cpu.name} が上がりました！`);
+    // 続きは簡易: ゲームは続行（順位付けやラウンド終了は後で拡張可）
   }
 
   currentPlayer = (currentPlayer + 1) % players.length;
@@ -320,67 +376,160 @@ function nextTurnIfCPU(){
   setTimeout(nextTurnIfCPU, 400);
 }
 
+// CPUが手を選ぶ（ジョーカーを使って候補生成）
 function cpuChoosePlay(cpu){
   if(!pile.combo){
+    // リード: 優先 ペア > シングル
+    // まずペア以上をジョーカー含めて探す
     const grouped = groupByRank(cpu.hand);
-    for(const r in grouped){
-      if(grouped[r].length >= 2){
-        const cards = grouped[r].slice(0,2);
+    const jokers = cpu.hand.filter(c=>c.rank===JOKER);
+    // ペア以上探す（need=2..4）
+    for(const need of [2,3,4]){
+      // 選べるランクを探す（実カード+ジョーカーで満たせるもの）
+      for(const r of RANKS){
+        const cards = buildSetWithJokers(cpu.hand, need, r);
+        if(cards) return {cards, combo: detectCombo(cards, settings.allowSequences)};
+      }
+      // ジョーカーのみで揃える可能性
+      if(jokers.length >= need){
+        const cards = jokers.slice(0,need);
         return {cards, combo: detectCombo(cards, settings.allowSequences)};
       }
     }
+    // なければ最小単発
     const single = cpu.hand.reduce((a,b)=> rankValue(a) <= rankValue(b) ? a : b);
     return {cards:[single], combo: detectCombo([single], settings.allowSequences)};
   } else {
+    // 場がある: 同型で上回る手を探す（ジョーカーを利用）
     const needType = pile.combo.type;
-    const candidates = findSameTypeCandidates(cpu.hand, needType, pile.combo.length);
-    const winning = candidates.filter(c=>{
-      const comb = detectCombo(c, settings.allowSequences);
-      if(!comb) return false;
-      if(revolution) return comb.rankValue < pile.combo.rankValue;
-      else return comb.rankValue > pile.combo.rankValue;
-    });
-    if(winning.length === 0) return null;
-    winning.sort((a,b)=>{
-      const ra = detectCombo(a, settings.allowSequences).rankValue;
-      const rb = detectCombo(b, settings.allowSequences).rankValue;
-      return ra - rb;
-    });
-    const chosen = winning[0];
-    return {cards:chosen, combo: detectCombo(chosen, settings.allowSequences)};
+    if(needType === 'single'){
+      // 単発: 単発候補を作る（含ジョーカー）
+      const candidates = findSameTypeCandidates(cpu.hand, 'single', 1);
+      const winning = candidates.filter(c=>{
+        const comb = detectCombo(c, settings.allowSequences);
+        if(!comb) return false;
+        if(revolution) return comb.rankValue < pile.combo.rankValue;
+        else return comb.rankValue > pile.combo.rankValue;
+      });
+      if(winning.length === 0) return null;
+      winning.sort((a,b)=> detectCombo(a, settings.allowSequences).rankValue - detectCombo(b, settings.allowSequences).rankValue);
+      return {cards: winning[0], combo: detectCombo(winning[0], settings.allowSequences)};
+    } else if(needType === 'pair' || needType === 'triple' || needType === 'four'){
+      const need = needType === 'pair' ? 2 : (needType === 'triple' ? 3 : 4);
+      // try by rank with jokers
+      const candidates = [];
+      for(const r of RANKS){
+        const cards = buildSetWithJokers(cpu.hand, need, r);
+        if(cards){
+          const comb = detectCombo(cards, settings.allowSequences);
+          if(!comb) continue;
+          if(revolution ? comb.rankValue < pile.combo.rankValue : comb.rankValue > pile.combo.rankValue){
+            candidates.push(cards);
+          }
+        }
+      }
+      // jokers-only candidate
+      const jokers = cpu.hand.filter(c=>c.rank===JOKER);
+      if(jokers.length >= need){
+        const cards = jokers.slice(0,need);
+        const comb = detectCombo(cards, settings.allowSequences);
+        if(comb && (revolution ? comb.rankValue < pile.combo.rankValue : comb.rankValue > pile.combo.rankValue)){
+          candidates.push(cards);
+        }
+      }
+      if(candidates.length === 0) return null;
+      candidates.sort((a,b)=> detectCombo(a, settings.allowSequences).rankValue - detectCombo(b, settings.allowSequences).rankValue);
+      return {cards: candidates[0], combo: detectCombo(candidates[0], settings.allowSequences)};
+    } else if(needType === 'sequence' && settings.allowSequences){
+      const seqLen = pile.combo.length;
+      const candidates = findSameTypeCandidates(cpu.hand, 'sequence', seqLen);
+      const winning = candidates.filter(c=>{
+        const comb = detectCombo(c, settings.allowSequences);
+        if(!comb) return false;
+        if(revolution) return comb.rankValue < pile.combo.rankValue;
+        else return comb.rankValue > pile.combo.rankValue;
+      });
+      if(winning.length === 0) return null;
+      winning.sort((a,b)=> detectCombo(a, settings.allowSequences).rankValue - detectCombo(b, settings.allowSequences).rankValue);
+      return {cards: winning[0], combo: detectCombo(winning[0], settings.allowSequences)};
+    }
+    return null;
   }
 }
 
+// groupByRank（ジョーカーは別扱い）
 function groupByRank(hand){
   const g = {};
   for(const c of hand){
+    if(c.rank === JOKER) continue;
     g[c.rank] = g[c.rank] || [];
     g[c.rank].push(c);
   }
   return g;
 }
 
+// buildSetWithJokers: hand から targetRank のセットを need 枚作れるなら配列を返す（ジョーカーで補完）
+// 例: need=3, targetRank='5' で 5, JOKER を使って [5, JOKER, JOKER] などを返す
+function buildSetWithJokers(hand, need, targetRank){
+  const real = hand.filter(c=>c.rank === targetRank);
+  const jokers = hand.filter(c=>c.rank === JOKER);
+  const have = real.length;
+  if(have + jokers.length < need) return null;
+  const res = [];
+  // まず実カードを詰める
+  for(let i=0;i<Math.min(have, need); i++) res.push(real[i]);
+  // 足りなければジョーカーを詰める
+  let rem = need - res.length;
+  for(let j=0;j<rem; j++) res.push(jokers[j]);
+  return res;
+}
+
+// findSameTypeCandidates 拡張: ジョーカーを考慮して候補を作る（sequence は専用ロジック）
 function findSameTypeCandidates(hand, type, seqLength){
   const res = [];
+  const jokers = hand.filter(c=>c.rank===JOKER);
   if(type === 'single'){
     for(const c of hand) res.push([c]);
   } else if(type === 'pair' || type === 'triple' || type === 'four'){
     const need = type === 'pair' ? 2 : (type === 'triple' ? 3 : 4);
-    const g = groupByRank(hand);
-    for(const r in g){
-      if(g[r].length >= need){
-        res.push(g[r].slice(0,need));
-      }
+    // 実カード + ジョーカーで満たせるランクをすべて作る
+    for(const r of RANKS){
+      const candidate = buildSetWithJokers(hand, need, r);
+      if(candidate) res.push(candidate);
+    }
+    // ジョーカーのみで作るパターン（既にカバーされている可能性もある）
+    if(jokers.length >= need){
+      res.push(jokers.slice(0,need));
     }
   } else if(type === 'sequence' && settings.allowSequences){
-    const arr = hand.slice().filter(c=>c.rank !== JOKER).sort((a,b)=>rankValue(a)-rankValue(b));
-    for(let i=0;i+seqLength-1 < arr.length;i++){
-      const slice = arr.slice(i,i+seqLength);
-      let ok = true;
-      for(let j=1;j<slice.length;j++){
-        if(rankValue(slice[j]) !== rankValue(slice[j-1]) + 1){ ok = false; break; }
+    // シーケンス探索：開始位置 s をスライドして、そのレンジを hand 内の実カード+ジョーカーで満たせるか確認
+    const len = seqLength;
+    // make map rank -> list
+    const rankMap = {};
+    for(const c of hand){
+      if(c.rank === JOKER) continue;
+      rankMap[c.rank] = rankMap[c.rank] || [];
+      rankMap[c.rank].push(c);
+    }
+    for(let s=0; s+len-1 < RANKS.length; s++){
+      let needJ = 0;
+      const chosen = [];
+      const usedRanks = {};
+      for(let r=s; r<=s+len-1; r++){
+        const rankName = RANKS[r];
+        if(rankMap[rankName] && rankMap[rankName].length > (usedRanks[rankName] || 0)){
+          // take one card of that rank
+          chosen.push(rankMap[rankName][usedRanks[rankName] || 0]);
+          usedRanks[rankName] = (usedRanks[rankName] || 0) + 1;
+        } else {
+          needJ++;
+        }
       }
-      if(ok) res.push(slice);
+      if(needJ <= jokers.length){
+        // fill with needed jokers
+        const usedJokers = jokers.slice(0, needJ);
+        res.push(chosen.concat(usedJokers));
+      }
     }
   }
   return res;
