@@ -1,12 +1,12 @@
-// 大富豪プロトタイプ（ローカル役追加・場手動流し廃止・8切り強化・演出追加）
-// 使い方: index.htmlをブラウザで開いて設定、ローカル役を追加して「ゲーム開始」を押してください。
+// 大富豪プロトタイプ（ローカル役削除、ゲーム開始ボタン復活、演出維持）
+// 使い方: index.html をブラウザで開いて「ゲーム開始」を押してください
 
 // --- 定義 ---
 const RANKS = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
 const SUITS = ['club','diamond','heart','spade'];
 const JOKER = 'JOKER';
 
-// --- デッキ ---
+// --- デッキ / ユーティリティ ---
 function makeDeck(useJoker=false){
   const deck = [];
   for(const r of RANKS){
@@ -41,13 +41,6 @@ const opt8cut = document.getElementById('opt8cut');
 const optSequences = document.getElementById('optSequences');
 const optJoker = document.getElementById('optJoker');
 
-// local roles UI
-const addRoleBtn = document.getElementById('addRoleBtn');
-const localRoleNameInput = document.getElementById('localRoleName');
-const localRoleTypeSelect = document.getElementById('localRoleType');
-const localRoleRankInput = document.getElementById('localRoleRank');
-const localRolesListEl = document.getElementById('localRolesList');
-
 const effectOverlay = document.getElementById('effectOverlay');
 
 // --- ゲーム状態 ---
@@ -60,14 +53,10 @@ let settings = { useJoker:false, allow8cut:true, allowSequences:true, allowRevol
 let rankCounter = 1;
 let gameOver = false;
 
-// local roles storage (in-memory; could be persisted to localStorage later)
-let localRoles = []; // each: {id,name,type,rank}
-
 // --- イベント ---
 startBtn.addEventListener('click', startGame);
 playBtn.addEventListener('click', humanPlay);
 passBtn.addEventListener('click', humanPass);
-addRoleBtn.addEventListener('click', addLocalRole);
 
 function log(s){
   const p = document.createElement('div'); p.textContent = s;
@@ -75,7 +64,7 @@ function log(s){
   logDiv.scrollTop = logDiv.scrollHeight;
 }
 
-// --- start ---
+// --- ゲーム開始 ---
 function startGame(){
   settings.useJoker = optJoker.checked;
   settings.allow8cut = opt8cut.checked;
@@ -89,7 +78,7 @@ function startGame(){
 
   players = [];
   for(let i=0;i<totalPlayers;i++){
-    players.push({id:i, name: i===0 ? 'あなた' : `CPU ${i}`, isHuman: i===0, hand: [], finishedRank:null, localRolesWon: []});
+    players.push({id:i, name: i===0 ? 'あなた' : `CPU ${i}`, isHuman: i===0, hand: [], finishedRank:null});
   }
   for(let i=0;i<deck.length;i++){
     const p = i % totalPlayers;
@@ -111,16 +100,15 @@ function startGame(){
   updateTurnInfo();
 }
 
-// --- render ---
-function renderAll(){ renderPlayers(); renderHand(); renderPile(); renderLocalRolesList(); }
+// --- 描画 ---
+function renderAll(){ renderPlayers(); renderHand(); renderPile(); }
 function renderPlayers(){
   playersArea.innerHTML = '';
   players.forEach((p,idx)=>{
     const div = document.createElement('div');
     div.className = 'player';
     const rankLabel = p.finishedRank ? ` (上がり ${p.finishedRank}位)` : '';
-    const roleLabel = (p.localRolesWon && p.localRolesWon.length>0) ? ` ・役:${p.localRolesWon.join(',')}` : '';
-    div.innerHTML = `<div>${p.name}${rankLabel}${roleLabel}</div><div>残り:${p.hand.length}</div>`;
+    div.innerHTML = `<div>${p.name}${rankLabel}</div><div>残り:${p.hand.length}</div>`;
     playersArea.appendChild(div);
   });
 }
@@ -134,9 +122,7 @@ function renderHand(){
     handDiv.appendChild(cardEl);
   });
   updateSelectedCount();
-  if(players[0].finishedRank !== null || gameOver){
-    enableControls(false);
-  }
+  if(players[0].finishedRank !== null || gameOver) enableControls(false);
 }
 function renderPile(){
   pileDiv.innerHTML = '';
@@ -145,9 +131,7 @@ function renderPile(){
     return;
   }
   pileText.textContent = `${pile.combo ? pile.combo.type : '不明'} — ${pile.combo ? pile.combo.rankText || '' : ''}`;
-  for(const c of pile.cards){
-    pileDiv.appendChild(createCardElement(c));
-  }
+  for(const c of pile.cards) pileDiv.appendChild(createCardElement(c));
 }
 function createCardElement(card){
   const el = document.createElement('div');
@@ -165,36 +149,6 @@ function getSelectedIndices(){ const selected = Array.from(handDiv.querySelector
 function updateSelectedCount(){ const cnt = handDiv.querySelectorAll('.card.selected').length; selectedCount.textContent = `選択：${cnt}`; }
 function enableControls(flag){ playBtn.disabled = !flag; passBtn.disabled = !flag; }
 
-// --- ローカル役 UI 操作 ---
-function addLocalRole(){
-  const name = (localRoleNameInput.value || '').trim();
-  if(!name){ alert('役名を入力してください'); return; }
-  const type = localRoleTypeSelect.value;
-  const rank = (localRoleRankInput.value || '').trim();
-  const id = Date.now().toString(36);
-  const role = {id, name, type, rank: rank === '' ? null : rank};
-  localRoles.push(role);
-  localRoleNameInput.value = ''; localRoleRankInput.value = '';
-  renderLocalRolesList();
-}
-function removeLocalRole(id){
-  localRoles = localRoles.filter(r=>r.id !== id);
-  renderLocalRolesList();
-}
-function renderLocalRolesList(){
-  localRolesListEl.innerHTML = '';
-  for(const r of localRoles){
-    const li = document.createElement('li');
-    const txt = `${r.name} [type:${r.type}${r.rank ? ', rank:'+r.rank : ''}]`;
-    li.textContent = txt;
-    const btn = document.createElement('button');
-    btn.textContent = '削除';
-    btn.addEventListener('click', ()=> removeLocalRole(r.id));
-    li.appendChild(btn);
-    localRolesListEl.appendChild(li);
-  }
-}
-
 // --- 人間操作 ---
 function humanPlay(){
   if(gameOver) return;
@@ -206,15 +160,11 @@ function humanPlay(){
   if(!combo){ alert('その組み合わせは認識できません（単発/ペア/トリプル/4枚/階段、ジョーカー補完含む）。'); return; }
   if(!isValidAgainstPile(combo)){ alert('場に対して合法な出し方ではありません。'); return; }
 
-  // 実行: remove cards
   for(const i of selIdx) human.hand.splice(i,1);
   pile.cards = playCards.slice();
   pile.combo = combo;
   pile.leader = currentPlayer;
   passCount = 0;
-
-  // ローカル役チェック（出した側に対して）
-  checkLocalRoles(playCards, currentPlayer);
 
   // 8切り判定（出したカードに8が含まれていれば流れる）
   if(settings.allow8cut && playCards.some(c=>c.rank === '8')){
@@ -398,9 +348,6 @@ function nextTurnIfCPU(){
   passCount = 0;
   log(`${cpu.name} が ${play.combo.type} を出しました。`);
 
-  // ローカル役チェック
-  checkLocalRoles(play.cards, currentPlayer);
-
   // 8切り判定: 出した手に8が含まれていれば流れる
   if(settings.allow8cut && play.cards.some(c=>c.rank === '8')){
     log(`${cpu.name}が8を出して場を流しました！`);
@@ -547,43 +494,6 @@ function findSameTypeCandidates(hand, type, seqLength){
   return res;
 }
 
-// --- ローカル役の判定（出したカードに対して）---
-function checkLocalRoles(playedCards, playerIdx){
-  if(localRoles.length === 0) return;
-  for(const role of localRoles){
-    if(matchRole(role, playedCards)){
-      log(`${players[playerIdx].name} がローカル役「${role.name}」を成立させました！`);
-      players[playerIdx].localRolesWon = players[playerIdx].localRolesWon || [];
-      players[playerIdx].localRolesWon.push(role.name);
-      showEffect(`役: ${role.name}`);
-    }
-  }
-  renderPlayers();
-}
-function matchRole(role, playedCards){
-  // role: {id,name,type,rank}
-  const combo = detectCombo(playedCards, settings.allowSequences);
-  if(!combo) return false;
-  if(role.type !== 'any' && role.type !== combo.type) return false;
-  if(role.rank){
-    // ランク条件は「出したカードのいずれかに一致」か、シーケンスなら最後のランクと一致するかをチェック
-    if(combo.type === 'sequence'){
-      // check if any played card (non-joker) has that rank, or sequence contains that rank
-      if(playedCards.some(c=>c.rank === role.rank)) return true;
-      // or sequence range contains the rank
-      const idx = RANKS.indexOf(role.rank);
-      if(idx === -1) return false;
-      // if sequence detected, detectCombo returned rankValue = last index
-      const lastIdx = combo.rankValue;
-      const firstIdx = lastIdx - combo.length + 1;
-      return idx >= firstIdx && idx <= lastIdx;
-    } else {
-      return playedCards.some(c=>c.rank === role.rank);
-    }
-  }
-  return true;
-}
-
 // --- ターン補助 ---
 function nextAliveAfter(idx){
   const n = players.length;
@@ -621,4 +531,4 @@ function updateTurnInfo(){
 }
 
 // 初期メッセージ
-log('プロトタイプを読み込みました。設定を選んで「ゲーム開始」を押してください。ローカル役を追加すると出したときに発生が確認できます。');
+log('プロトタイプを読み込みました。設定を選んで「ゲーム開始」を押してください。');
