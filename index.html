@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>大富豪 - プロトタイプ</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>大富豪 - プロトタイプ</h1>
+    <div id="config">
+      <label>CPU数：
+        <select id="cpuCount">
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="optRevolution" checked /> 革命(4枚)有効</label>
+      <label><input type="checkbox" id="opt8cut" checked /> 8切り有効</label>
+      <label><input type="checkbox" id="optSequences" checked /> 階段(ストレート)有効</label>
+      <label><input type="checkbox" id="optJoker" /> ジョーカー使用</label>
+      <button id="startBtn">ゲーム開始</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="status">
+      <div id="turnInfo">準備してください。</div>
+      <div id="pileInfo">場：<span id="pileText">なし</span></div>
+      <div id="log"></div>
+    </section>
+
+    <section id="table">
+      <div id="playersArea"></div>
+      <div id="centerArea">
+        <div id="pile"></div>
+        <div id="controls">
+          <button id="playBtn">出す</button>
+          <button id="passBtn">パス</button>
+          <button id="clearBtn">場を流す(クリア)</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="handArea">
+      <h2>あなたの手札</h2>
+      <div id="hand" class="card-row"></div>
+      <div id="selectedCount">選択：0</div>
+    </section>
+  </main>
+
+  <footer>
+    <small>プロトタイプ — ルールの詳細は daifugojapan.com のルールを参考にしてください。設定で細かいルールを切替できます。</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
