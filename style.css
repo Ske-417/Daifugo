@@ -34,18 +34,6 @@ header h1{margin:0; font-size:20px}
 #config{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
 #config label{font-size:14px; color:#fff}
 
-#localRolesConfig{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  flex-wrap:wrap;
-  margin-left:8px;
-}
-#localRolesList{ list-style:none; margin:4px 0 0 0; padding:0; width:100%; max-width:420px; color:#fff }
-#localRolesList li{ font-size:13px; margin:2px 0; display:flex; gap:8px; align-items:center}
-#localRolesList button{ padding:2px 6px; font-size:12px; }
-
-/* main layout */
 main{flex:1; padding:18px; display:flex; flex-direction:column; gap:16px}
 
 #status{display:flex; gap:20px; align-items:center}
@@ -119,7 +107,6 @@ button[disabled]{opacity:0.5; cursor:not-allowed}
 .effect-overlay.show{ opacity:1; pointer-events:auto; }
 .effect-overlay.show .effect-box{ transform:scale(1); }
 
-/* small screens (not necessary but safe) */
 @media (max-width:900px){
   #centerArea{ width:320px }
   .card{ width:52px; height:78px }
