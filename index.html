@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>大富豪</title>
+  <title>大富豪 - プロトタイプ</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
-    <h1>大富豪</h1>
+    <h1>大富豪 - プロトタイプ</h1>
     <div id="config">
       <label>CPU数：
         <select id="cpuCount">
@@ -22,8 +22,24 @@
       <label><input type="checkbox" id="opt8cut" checked /> 8切り有効</label>
       <label><input type="checkbox" id="optSequences" checked /> 階段(ストレート)有効</label>
       <label><input type="checkbox" id="optJoker" /> ジョーカー使用</label>
-      <button id="startBtn">ゲーム開始</button>
     </div>
+
+    <div id="localRolesConfig">
+      <div><strong>ローカル役（任意）</strong></div>
+      <input id="localRoleName" placeholder="役名（例：階段スペシャル）" />
+      <select id="localRoleType">
+        <option value="any">any</option>
+        <option value="single">single</option>
+        <option value="pair">pair</option>
+        <option value="triple">triple</option>
+        <option value="four">four</option>
+        <option value="sequence">sequence</option>
+      </select>
+      <input id="localRoleRank" placeholder="ランク条件（任意: 例 7 または 8）" style="width:60px" />
+      <button id="addRoleBtn">追加</button>
+      <ul id="localRolesList"></ul>
+    </div>
+    <div style="margin-left:12px; color:#ffe">場は自動で流れます。手動クリアボタンは廃止しました。</div>
   </header>
 
   <main>
@@ -40,7 +56,6 @@
         <div id="controls">
           <button id="playBtn">出す</button>
           <button id="passBtn">パス</button>
-          <button id="clearBtn">場を流す(クリア)</button>
         </div>
       </div>
     </section>
@@ -53,8 +68,10 @@
   </main>
 
   <footer>
-    <small>プロトタイプ — スートはCSSで表現しています。テキストベースで動作します。</small>
+    <small>プロトタイプ — ローカル役は自由に追加してプレイ中に発生を確認してください。</small>
   </footer>
+
+  <div id="effectOverlay" class="effect-overlay" aria-hidden="true"></div>
 
   <script src="app.js"></script>
 </body>
