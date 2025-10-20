@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">大富豪アイコン</title>
+  <desc id="desc">緑の背景に白いカードと大きな「大」、カード上にハートとスペードのスートを配したシンプルなアイコン</desc>
+
+  <!-- 背景 -->
+  <rect width="64" height="64" rx="10" ry="10" fill="#0b704f"/>
+
+  <!-- カード -->
+  <g transform="translate(8,6)">
+    <rect x="0" y="0" width="48" height="52" rx="6" ry="6" fill="#ffffff" stroke="#e6e6e6" stroke-width="1"/>
+    <!-- 左上スート（ハート） -->
+    <g transform="translate(6,6)" aria-hidden="true">
+      <path d="M6 2
+               C6 0 9 0 9 2
+               C9 4 6 6.2 6 9
+               C6 6.2 3 4 3 2
+               C3 0 6 0 6 2 Z"
+            fill="#d32f2f" transform="scale(1.6) translate(0,0)"/>
+    </g>
+    <!-- 右上スート（スペード） -->
+    <g transform="translate(36,6)" aria-hidden="true">
+      <path d="M6 2
+               C4 0 0 3 3 6
+               L6 9
+               L9 6
+               C12 3 8 0 6 2 Z"
+            fill="#111111" transform="scale(1.6) translate(-2,0)"/>
+      <rect x="5" y="10" width="2" height="6" rx="1" fill="#111111" transform="scale(1.6) translate(-2,0)"/>
+    </g>
+
+    <!-- 中央の大（大富豪の「大」） -->
+    <text x="24" y="36" text-anchor="middle" font-family="Hiragino Kaku Gothic ProN, Meiryo, 'Noto Sans JP', sans-serif" font-weight="700" font-size="22" fill="#111111" dominant-baseline="middle">大</text>
+  </g>
+</svg>
